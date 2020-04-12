@@ -3,6 +3,7 @@ const auth = require('./auth.json');
 const cron = require('cron');
 const $ = require('cheerio');
 const Rainfall = require('./rainfall.js');
+const Fuse = require('fuse.js');
 
 const request = require('request');
 const http = require('http');
@@ -22,6 +23,25 @@ var bot = new Discord.Client({
 var sex_tape_count = 1;
 const sex_tape_freq = 500;
 var rivers = [];
+var fuse;
+
+//Fuse options
+const options = {
+    isCaseSensitive: false,
+    findAllMatches: false,
+    includeMatches: false,
+    includeScore: false,
+    useExtendedSearch: false,
+    minMatchCharLength: 1,
+    shouldSort: true,
+    threshold: 0.2,
+    location: 0,
+    distance: 100,
+    keys: [
+      "river",
+      "section"
+    ]
+};
 
 bot.on('ready', function() {
 
@@ -49,8 +69,8 @@ bot.on('ready', function() {
 
       //maybe use river and section? it is a bit log
       //rivers = body.data.map(x => `${x.river} ${x.section}`);
-      rivers = body.data.map(x => x.river);
-      
+      rivers = body.data;
+      fuse = new Fuse(rivers, options);
       //select river immediately
       play_river();
 
@@ -58,6 +78,7 @@ bot.on('ready', function() {
         rivers.push('error');
       }
     });
+
 });
 
 
@@ -109,14 +130,10 @@ var test_event = ( () => {
 
   /*
   bot.users.cache.forEach( x => {
-
   n if(!x.bot) {
       users.push(x.id);
     }
-
   });
-
-
   var user = users[getRandInt(users.length)];
   */
 
@@ -126,7 +143,7 @@ var play_river = ( () => {
 
     console.log('changing river name');
   
-    bot.user.setActivity('on the River ' + rivers[getRandInt(rivers.length)], {type: 'PLAYING'});
+    bot.user.setActivity('on the River ' + rivers[getRandInt(rivers.length)].river, {type: 'PLAYING'});
   
 }).bind(this);
 
@@ -140,7 +157,7 @@ function getFiveToEight() {
 
 let morning = new cron.CronJob('00 55 07 * * *', five_to_eight); // fires every day, at 01:05:01 and 13:05:01
 let afternoon = new cron.CronJob('00 55 19 * * *', five_to_eight); // fires every day, at 01:05:01 and 13:05:01
-let riverhour = new cron.CronJob('* 55 * * * *', play_river);
+let riverhour = new cron.CronJob('00 55 0 * * *', play_river);
 //let job1 = new cron.CronJob('00 * * * * *', five_to_eight); // fires every day, at 01:05:01 and 13:05:01
 
 
@@ -242,8 +259,21 @@ bot.on('message', function(msg) {
 
   if(msg.content.match(/\~river/)) {
     var river = msg.content.toLowerCase().split(/\~river\ /i)[1];
+    var result = fuse.search(river);
+    result.forEach(x => {
+        request('http://api.rainchasers.com/v1/river/' + x.item.uuid, {json: true}, (err, res, body) => {
+            var res = "";
+            if(body.status === 200) {
+                res = res + '\n' + body.data.river + ' ' + body.data.section + ' grade ' + body.data.grade.text;
+            if(body.data.state) {
+              res = res + ' currently on ' + (Math.round(100 * body.data.state.value) /100) + ' (' + body.data.state.text+  ')';
+            }
+            msg.channel.send(res);
+            }
+        });
+    });
     //console.log('river', river);
-    request('http://api.rainchasers.com/v1/river?q=' + river, {json: true}, (err, res, body) => {
+    /*request('http://api.rainchasers.com/v1/river?q=' + river, {json: true}, (err, res, body) => {
 
       if(body.status === 200) {
         var res = "";
@@ -270,7 +300,7 @@ bot.on('message', function(msg) {
         msg.channel.send('Something has gone terribly wrong');
       }
 
-    });
+    });*/
   }
 
   if(msg.content.match(/\~help/)) {
