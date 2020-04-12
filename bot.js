@@ -46,9 +46,13 @@ bot.on('ready', function() {
 
   request('http://api.rainchasers.com/v1/river?ts=1357715085', {json: true}, (err, res, body) => {
     if(body.status === 200) {
-        body.data.forEach( (x,i) => {
-            rivers.push(x.river);
-        });
+
+      //maybe use river and section? it is a bit log
+      //rivers = body.data.map(x => `${x.river} ${x.section}`);
+      rivers = body.data.map(x => x.river);
+      
+      //select river immediately
+      play_river();
 
       } else {
         rivers.push('error');
@@ -136,7 +140,7 @@ function getFiveToEight() {
 
 let morning = new cron.CronJob('00 55 07 * * *', five_to_eight); // fires every day, at 01:05:01 and 13:05:01
 let afternoon = new cron.CronJob('00 55 19 * * *', five_to_eight); // fires every day, at 01:05:01 and 13:05:01
-let riverhour = new cron.CronJob('* 55 * * * *', play_river);
+let riverhour = new cron.CronJob('00 55 0 * * *', play_river);
 //let job1 = new cron.CronJob('00 * * * * *', five_to_eight); // fires every day, at 01:05:01 and 13:05:01
 
 
@@ -270,7 +274,8 @@ bot.on('message', function(msg) {
   }
 
   if(msg.content.match(/\~help/)) {
-    var message = 
+    var message =
+      '--- Warwick Canoe Club discord bot ---\n'
       'Type \'~river <river>\' for rain chasers info about <river>\n' +
       'Type \'~dart\' to check if the dart is running\n' +
       'Type \'~dart\' to check if the dart is running\n' +
