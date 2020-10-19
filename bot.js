@@ -66,6 +66,11 @@ var five_to_eight = (() => {
 
   console.log('trying to five to eight');
 
+  if(getRandInt(20) !== 8) {
+    console.log('canceled five to eight');
+    return;
+  }
+
   var users = [];
 
   bot.users.cache.forEach( x => {
